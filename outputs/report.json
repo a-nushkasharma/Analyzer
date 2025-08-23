@@ -1,0 +1,73 @@
+{
+  "contract_id": "b4e9bf46-71c8-43e6-a2b0-d362855eb078",
+  "phase2_full_analysis": {
+    "llm1_findings": [
+      {
+        "id": "vuln-reentrancy",
+        "title": "Reentrancy via low-level call",
+        "category": "SWC-107",
+        "severity": "high",
+        "confidence": 0.85,
+        "evidence": "external call via .call{value:...} before state update (withdraw)",
+        "rationale": "State change after external call enables reentrancy",
+        "affected_components": [
+          "withdraw"
+        ],
+        "recommendation": "Move state update before external call or use ReentrancyGuard",
+        "related_refs": [
+          "SWC-107"
+        ]
+      }
+    ],
+    "llm2_findings": [
+      {
+        "id": "vuln-reentrancy",
+        "title": "Reentrancy via low-level call",
+        "category": "SWC-107",
+        "severity": "high",
+        "confidence": 0.85,
+        "evidence": "external call via .call{value:...} before state update (withdraw)",
+        "rationale": "State change after external call enables reentrancy",
+        "affected_components": [
+          "withdraw"
+        ],
+        "recommendation": "Move state update before external call or use ReentrancyGuard",
+        "related_refs": [
+          "SWC-107"
+        ]
+      }
+    ]
+  },
+  "phase3_verifications": {
+    "llm1_on_llm2": [
+      {
+        "id": "vuln-reentrancy",
+        "original_title": "Reentrancy via low-level call",
+        "valid": true,
+        "confidence": 0.9,
+        "decision": "confirm",
+        "reason": "Snippets show external call before state update",
+        "corrected_category": "SWC-107",
+        "corrected_severity": "high",
+        "extra_evidence_needed": null
+      }
+    ],
+    "llm2_on_llm1": [
+      {
+        "id": "vuln-reentrancy",
+        "original_title": "Reentrancy via low-level call",
+        "valid": true,
+        "confidence": 0.9,
+        "decision": "confirm",
+        "reason": "Snippets show external call before state update",
+        "corrected_category": "SWC-107",
+        "corrected_severity": "high",
+        "extra_evidence_needed": null
+      }
+    ]
+  },
+  "phase4_consensus_checks": {
+    "llm1_confirms": [],
+    "llm2_confirms": []
+  }
+}

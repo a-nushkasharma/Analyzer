@@ -1,0 +1,22 @@
+You are verifying another model's vulnerability report. Use ONLY the provided contract snippets (no assumptions).
+Counterparty report (JSON):
+{counterparty_report}
+
+Relevant contract snippets:
+{contract_snippets}
+
+For each item, return a JSON list with objects:
+[
+  {{
+    "id": "{{id}}",
+    "original_title": "...",
+    "valid": true|false,
+    "confidence": 0.0-1.0,
+    "decision": "confirm|downgrade|reject|needs-more-evidence",
+    "reason": "short reasoning grounded in snippets",
+    "corrected_category": null,
+    "corrected_severity": null,
+    "extra_evidence_needed": null
+  }}
+]
+Return only JSON.

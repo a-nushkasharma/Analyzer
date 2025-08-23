@@ -1,0 +1,39 @@
+{
+  "contract_id": "2054843d-c8da-44da-ac35-e2491f077839",
+  "final_report": {
+    "vulnerabilities": [
+      {
+        "id": "vuln-reentrancy",
+        "title": "Reentrancy via low-level call",
+        "category": "SWC-107",
+        "severity": "high",
+        "confidence": 0.9,
+        "evidence": "Snippets show external call before state update",
+        "rationale": "Snippets show external call before state update",
+        "affected_components": [],
+        "recommendation": null,
+        "related_refs": [],
+        "consensus": "unknown"
+      },
+      {
+        "id": "vuln-reentrancy",
+        "title": "Reentrancy via low-level call",
+        "category": "SWC-107",
+        "severity": "high",
+        "confidence": 0.9,
+        "evidence": "Snippets show external call before state update",
+        "rationale": "Snippets show external call before state update",
+        "affected_components": [],
+        "recommendation": null,
+        "related_refs": [],
+        "consensus": "unknown"
+      }
+    ],
+    "stats": {
+      "total_detected": 2,
+      "confirmed": 0,
+      "disputed": 0,
+      "needs_more_evidence": 0
+    }
+  }
+}

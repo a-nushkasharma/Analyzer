@@ -1,0 +1,19 @@
+You are performing a second-pass consensus check. Review the prior verification item and state whether you CONFIRM or DISPUTE it using only the provided snippets.
+
+Verification item:
+{verification_item}
+
+Relevant contract snippets:
+{contract_snippets}
+
+Return a JSON list of objects:
+[
+  {{
+    "id": "<same id>",
+    "stance": "confirm|dispute",
+    "confidence": 0.0-1.0,
+    "reason": "why, grounded in snippets",
+    "what_is_missing": "<if dispute, specify what snippet to fetch; else null>"
+  }}
+]
+Return only JSON.

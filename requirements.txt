@@ -1,0 +1,13 @@
+# mock-driven pipeline & dev
+python-dotenv>=1.0
+rich>=13.7
+pytest>=8.0
+
+# Uncomment for API credit usage
+# langchain>=0.2
+# langchain-community>=0.2
+# langchain-openai>=0.1
+# faiss-cpu>=1.8
+# chromadb>=0.5
+# openai>=1.40
+# google-generativeai>=0.7
