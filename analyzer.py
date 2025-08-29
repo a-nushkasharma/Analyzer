@@ -1,94 +1,105 @@
+import os
 import json
-import re
-from typing import List
+from dotenv import load_dotenv
+from llm1_api import LLM1Client
+from llm2_api import LLM2Client
+from util import SimpleRAG
 
-class MockLLM:
-    
-    def __init__(self, name: str):
-        self.name = name
+load_dotenv()
+class Analyzer:
+    """
+    Multi-phase analyzer:
+    1. Both LLMs analyze the raw smart contract.
+    2. Each LLM re-analyzes using the other's output + RAG context.
+    3. Each LLM validates or disputes the other's Phase 2 results.
+    Final JSON report consolidates everything.
+    """
 
-    def call(self, prompt: str) -> str:
-        if "FULL CONTRACT CODE" in prompt or "FULL CONTRACT" in prompt or "You are a smart contract security auditor" in prompt:
-            findings = []
-            # heuristics
-            if ".call{" in prompt or "call{" in prompt or ".call(" in prompt:
-                findings.append({
-                    "id": "vuln-reentrancy",
-                    "title": "Reentrancy via low-level call",
-                    "category": "SWC-107",
-                    "severity": "high",
-                    "confidence": 0.85,
-                    "evidence": "external call via .call{value:...} before state update (withdraw)",
-                    "rationale": "State change after external call enables reentrancy",
-                    "affected_components": ["withdraw"],
-                    "recommendation": "Move state update before external call or use ReentrancyGuard",
-                    "related_refs": ["SWC-107"]
-                })
-            if "tx.origin" in prompt:
-                findings.append({
-                    "id": "vuln-txorigin",
-                    "title": "Use of tx.origin for authentication",
-                    "category": "SWC-115",
-                    "severity": "medium",
-                    "confidence": 0.75,
-                    "evidence": "tx.origin used in an access check",
-                    "rationale": "tx.origin is unsafe for auth checks",
-                    "affected_components": ["auth functions"],
-                    "recommendation": "Use msg.sender and proper role management",
-                    "related_refs": ["SWC-115"]
-                })
-            return json.dumps(findings)
-        if "Counterparty report" in prompt or "verifying another model" in prompt:
-            # extract the JSON from the prompt if possible
-            try:
-                # crude parse
-                s = prompt.find("Counterparty report (JSON):")
-                payload = []
-                if s != -1:
-                    raw = prompt[s+len("Counterparty report (JSON):"):].strip()
-                    start = raw.find("[")
-                    end = raw.rfind("]")
-                    if start != -1 and end != -1:
-                        payload = json.loads(raw[start:end+1])
-            except Exception:
-                payload = []
-            out = []
-            for it in (payload or []):
-                # simple logic: confirm items that have 'reentrancy' or 'call' in evidence
-                evidence = (it.get("evidence") or "").lower()
-                if "reentrancy" in evidence or "call" in evidence or "external call" in evidence:
-                    out.append({
-                        "id": it.get("id", "vuln-1"),
-                        "original_title": it.get("title"),
-                        "valid": True,
-                        "confidence": 0.8,
-                        "decision": "confirm",
-                        "reason": "Snippet shows external call pattern matching reentrancy risk",
-                        "corrected_category": it.get("category"),
-                        "corrected_severity": it.get("severity"),
-                        "extra_evidence_needed": None
-                    })
-                else:
-                    out.append({
-                        "id": it.get("id", "vuln-1"),
-                        "original_title": it.get("title"),
-                        "valid": False,
-                        "confidence": 0.3,
-                        "decision": "needs-more-evidence",
-                        "reason": "No clear evidence in provided snippets",
-                        "corrected_category": None,
-                        "corrected_severity": None,
-                        "extra_evidence_needed": "fetch related function or storage variable declarations"
-                    })
-            return json.dumps(out)
-        # If it's a confirm/dispute prompt
-        if "Prior verification item" in prompt or "Verification item:" in prompt:
-            # return confirm for most things
-            return json.dumps([{
-                "id": "vuln-reentrancy",
-                "stance": "confirm",
-                "confidence": 0.85,
-                "reason": "Evidence is sufficient in the snippet",
-                "what_is_missing": None
-            }])
-        return json.dumps([])
+    def __init__(self):
+        self.llm1 = LLM1Client(model="gpt-4o-mini")
+        self.llm2 = LLM2Client(model="gemini-1.5-pro")
+        self.rag = SimpleRAG()
+
+    def analyze_contract(self, contract_code: str) -> dict:
+        contract_id = self.ingest_contract(contract_code)
+
+        #Phase 1: Independent analysis
+        print("🚀 Starting Phase 1: Initial LLM analysis...")
+        llm1_initial = self.llm1.analyze_contract(contract_code, phase=1)
+        llm2_initial = self.llm2.analyze_contract(contract_code, phase=1)
+
+        #Phase 2: Cross-review with RAG 
+        print("\n🚀 Starting Phase 2: Cross verification with RAG context...")
+        rag_context = self.rag.retrieve(contract_id)
+
+        llm1_cross = self.llm1.analyze_contract(
+            contract_code,
+            phase=2,
+            context={
+                "counterparty_report": llm2_initial,
+                "contract_snippets": rag_context
+            }
+        )
+
+        llm2_cross = self.llm2.analyze_contract(
+            contract_code,
+            phase=2,
+            context={
+                "counterparty_report": llm1_initial,
+                "contract_snippets": rag_context
+            }
+        )
+
+        #Phase 3: Confirm / Dispute 
+        print("\n🚀 Starting Phase 3: Final confirmation/dispute...")
+        llm1_final = self.llm1.analyze_contract(
+            contract_code,
+            phase=3,
+            context={"other_findings": llm2_cross}
+        )
+
+        llm2_final = self.llm2.analyze_contract(
+            contract_code,
+            phase=3,
+            context={"other_findings": llm1_cross}
+        )
+
+        #Consolidate Report 
+        print("\n🚀 Building final report...")
+        report = {
+            "contract_id": contract_id,
+            "phase1": {"llm1": llm1_initial, "llm2": llm2_initial},
+            "phase2": {"llm1": llm1_cross, "llm2": llm2_cross},
+            "phase3": {"llm1": llm1_final, "llm2": llm2_final},
+        }
+        return report
+
+    def ingest_contract(self, contract_code: str) -> str:
+        #Hash + store contract in RAG, return contract_id
+        import hashlib
+
+        contract_id = hashlib.sha256(contract_code.encode()).hexdigest()[:12]
+        self.rag.add(contract_id, contract_code)
+        return contract_id
+
+
+if __name__ == "__main__":
+    analyzer = Analyzer()
+    sample_code = """
+    pragma solidity ^0.8.0;
+    contract Test {
+        mapping(address => uint) public balances;
+        function deposit() public payable {
+            balances[msg.sender] += msg.value;
+        }
+        function withdraw(uint amount) public {
+            require(balances[msg.sender] >= amount, "Not enough funds");
+            (bool ok,) = msg.sender.call{value: amount}("");
+            require(ok, "Transfer failed");
+            balances[msg.sender] -= amount;
+        }
+    }
+    """
+    result = analyzer.analyze_contract(sample_code)
+    print("\n--- FINAL REPORT ---")
+    print(json.dumps(result, indent=2))
